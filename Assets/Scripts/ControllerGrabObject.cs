@@ -11,14 +11,23 @@ public class ControllerGrabObject : MonoBehaviour
     private GameObject collidingObject;
     private GameObject objectInHand;
 
-    private void SetCollidingObject(Collider col)
+    void Update()
     {
-        if (collidingObject || !col.GetComponent<Rigidbody>())
+        if (grabAction.GetLastStateDown(handType))
         {
-            return;
+            if (collidingObject)
+            {
+                GrabObject();
+            }
         }
 
-        collidingObject = col.gameObject;
+        if (grabAction.GetLastStateUp(handType))
+        {
+            if (objectInHand)
+            {
+                ReleaseObject();
+            }
+        }
     }
 
     public void OnTriggerEnter(Collider other)
@@ -41,8 +50,44 @@ public class ControllerGrabObject : MonoBehaviour
         collidingObject = null;
     }
 
-    void Update()
+    private void SetCollidingObject(Collider col)
     {
-        
+        if (collidingObject || !col.GetComponent<Rigidbody>())
+        {
+            return;
+        }
+
+        collidingObject = col.gameObject;
+    }
+
+    private void GrabObject()
+    {
+        objectInHand = collidingObject;
+        collidingObject = null;
+
+        var joint = AddFixedJoint();
+        joint.connectedBody = objectInHand.GetComponent<Rigidbody>();
+    }
+
+    private FixedJoint AddFixedJoint()
+    {
+        FixedJoint fx = gameObject.AddComponent<FixedJoint>();
+        fx.breakForce = 20000;
+        fx.breakTorque = 20000;
+        return fx;
+    }
+
+    private void ReleaseObject()
+    {
+        if (GetComponent<FixedJoint>())
+        {
+            GetComponent<FixedJoint>().connectedBody = null;
+            Destroy(GetComponent<FixedJoint>());
+
+            objectInHand.GetComponent<Rigidbody>().velocity = controllerPose.GetVelocity();
+            objectInHand.GetComponent<Rigidbody>().angularVelocity = controllerPose.GetAngularVelocity();
+        }
+
+        objectInHand = null;
     }
 }
